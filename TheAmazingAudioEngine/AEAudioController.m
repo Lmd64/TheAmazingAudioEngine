@@ -54,7 +54,6 @@ const int kInputAudioBufferFrames               = 4096;
 const int kLevelMonitorScratchBufferSize        = 4096;
 const int kAudiobusSourceFlag                   = 1<<12;
 const NSTimeInterval kMaxBufferDurationWithVPIO = 0.01;
-#define kNoAudioErr                            -2222
 
 NSString * AEAudioControllerSessionInterruptionBeganNotification = @"com.theamazingaudioengine.AEAudioControllerSessionInterruptionBeganNotification";
 NSString * AEAudioControllerSessionInterruptionEndedNotification = @"com.theamazingaudioengine.AEAudioControllerSessionInterruptionEndedNotification";
@@ -208,7 +207,7 @@ typedef struct _channel_group_t {
 #pragma mark Messaging
 
 /*!
- * Message 
+ * Message
  */
 typedef struct {
     void                            (^block)();
@@ -281,20 +280,20 @@ static void serveAudiobusInputQueue(AEAudioController *THIS);
 
 @implementation AEAudioController
 @synthesize audioSessionCategory        = _audioSessionCategory,
-            audioInputAvailable         = _audioInputAvailable,
-            numberOfInputChannels       = _numberOfInputChannels, 
-            muteOutput                  = _muteOutput,
-            enableBluetoothInput        = _enableBluetoothInput,
-            voiceProcessingEnabled      = _voiceProcessingEnabled,
-            voiceProcessingOnlyForSpeakerAndMicrophone = _voiceProcessingOnlyForSpeakerAndMicrophone,
-            playingThroughDeviceSpeaker = _playingThroughDeviceSpeaker,
-            preferredBufferDuration     = _preferredBufferDuration, 
-            inputMode                   = _inputMode, 
-            audioUnit                   = _ioAudioUnit,
-            audioGraph                  = _audioGraph,
-            audioDescription            = _audioDescription,
-            audioRoute                  = _audioRoute,
-            audiobusInputPort           = _audiobusInputPort;
+audioInputAvailable         = _audioInputAvailable,
+numberOfInputChannels       = _numberOfInputChannels,
+muteOutput                  = _muteOutput,
+enableBluetoothInput        = _enableBluetoothInput,
+voiceProcessingEnabled      = _voiceProcessingEnabled,
+voiceProcessingOnlyForSpeakerAndMicrophone = _voiceProcessingOnlyForSpeakerAndMicrophone,
+playingThroughDeviceSpeaker = _playingThroughDeviceSpeaker,
+preferredBufferDuration     = _preferredBufferDuration,
+inputMode                   = _inputMode,
+audioUnit                   = _ioAudioUnit,
+audioGraph                  = _audioGraph,
+audioDescription            = _audioDescription,
+audioRoute                  = _audioRoute,
+audiobusInputPort           = _audiobusInputPort;
 
 @dynamic    running, inputGainAvailable, inputGain, audiobusOutputPort, inputAudioDescription, inputChannelSelection;
 
@@ -326,7 +325,7 @@ static void interruptionListener(void *inClientData, UInt32 inInterruption) {
         if ( THIS->_runningPriorToInterruption ) {
             [THIS stop];
         }
-
+        
         [[NSNotificationCenter defaultCenter] postNotificationName:AEAudioControllerSessionInterruptionBeganNotification object:THIS];
         
         processPendingMessagesOnRealtimeThread(THIS);
@@ -448,7 +447,7 @@ static OSStatus channelAudioProducer(void *userInfo, AudioBufferList *audio, UIn
             performLevelMonitoring(&group->level_monitor_data, audio, *frames);
         }
     }
-        
+    
     // Advance the sample time, to make sure we continue to render if we're called again with the same arguments
     arg->inTimeStamp.mSampleTime += *frames;
     
@@ -550,17 +549,17 @@ static OSStatus inputAudioProducer(void *userInfo, AudioBufferList *audio, UInt3
         checkResult(result, "AudioConverterConvertComplexBuffer");
     } else {
         for ( int i=0; i<audio->mNumberBuffers; i++ ) {
-            audio->mBuffers[i].mDataByteSize = MIN(audio->mBuffers[i].mDataByteSize, THIS->_inputAudioBufferList->mBuffers[i].mDataByteSize);
-            memcpy(audio->mBuffers[i].mData, THIS->_inputAudioBufferList->mBuffers[i].mData, audio->mBuffers[i].mDataByteSize);
+            memcpy(audio->mBuffers[i].mData, THIS->_inputAudioBufferList->mBuffers[i].mData, THIS->_inputAudioBufferList->mBuffers[i].mDataByteSize);
+            audio->mBuffers[i].mDataByteSize = THIS->_inputAudioBufferList->mBuffers[i].mDataByteSize;
         }
     }
-
+    
     return noErr;
 }
 
 static OSStatus inputAvailableCallback(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
     AEAudioController *THIS = (AEAudioController *)inRefCon;
-
+    
     AudioTimeStamp timestamp = *inTimeStamp;
     if ( !(*ioActionFlags & kAudiobusSourceFlag) ) {
         // Adjust timestamp to factor in hardware input latency
@@ -572,7 +571,7 @@ static OSStatus inputAvailableCallback(void *inRefCon, AudioUnitRenderActionFlag
         serveAudiobusInputQueue(THIS);
         return noErr;
     }
-
+    
     for ( int i=0; i<THIS->_timingCallbacks.count; i++ ) {
         callback_t *callback = &THIS->_timingCallbacks.callbacks[i];
         ((AEAudioControllerTimingCallback)callback->callback)(callback->userInfo, THIS, &timestamp, inNumberFrames, AEAudioTimingContextInput);
@@ -597,11 +596,10 @@ static OSStatus inputAvailableCallback(void *inRefCon, AudioUnitRenderActionFlag
         }
     }
     
-    if ( inNumberFrames == 0 ) return kNoAudioErr;
-    
     OSStatus result = noErr;
     
     for ( int tableIndex = 0; tableIndex < THIS->_inputCallbackCount; tableIndex++ ) {
+        // Run through each set of channels for which there're receivers
         input_callback_table_t *table = &THIS->_inputCallbacks[tableIndex];
         
         if ( !table->audioBufferList ) continue;
@@ -656,7 +654,7 @@ static OSStatus groupRenderNotifyCallback(void *inRefCon, AudioUnitRenderActionF
 static OSStatus topRenderNotifyCallback(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
     
     AEAudioController *THIS = (AEAudioController *)inRefCon;
-        
+    
     if ( *ioActionFlags & kAudioUnitRenderAction_PreRender ) {
         
         if ( !THIS->_hardwareInputAvailable && THIS->_audiobusInputPort && !(*ioActionFlags & kAudiobusSourceFlag) && THIS->_usingAudiobusInput ) {
@@ -779,7 +777,7 @@ static OSStatus topRenderNotifyCallback(void *inRefCon, AudioUnitRenderActionFla
     if ( !(self = [super init]) ) return nil;
     
     NSAssert(audioDescription.mFormatID == kAudioFormatLinearPCM, @"Only linear PCM supported");
-
+    
     _audioSessionCategory = enableInput ? kAudioSessionCategory_PlayAndRecord : kAudioSessionCategory_MediaPlayback;
     _allowMixingWithOtherApps = YES;
     _audioDescription = audioDescription;
@@ -803,10 +801,14 @@ static OSStatus topRenderNotifyCallback(void *inRefCon, AudioUnitRenderActionFla
         _audioGraph = NULL;
     }
     
+    self.housekeepingTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:[[[AEAudioControllerProxy alloc] initWithAudioController:self] autorelease] selector:@selector(housekeeping) userInfo:nil repeats:YES];
+    
     return self;
 }
 
 - (void)dealloc {
+    [_housekeepingTimer invalidate];
+    self.housekeepingTimer = nil;
     
     self.lastError = nil;
     
@@ -905,9 +907,7 @@ static OSStatus topRenderNotifyCallback(void *inRefCon, AudioUnitRenderActionFla
             return NO;
         }
     }
-
-    self.housekeepingTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(housekeeping) userInfo:nil repeats:YES];
-
+    
     return !hasError;
 }
 
@@ -934,10 +934,6 @@ static OSStatus topRenderNotifyCallback(void *inRefCon, AudioUnitRenderActionFla
         [_pollThread release];
         _pollThread = nil;
     }
-    
-    [_housekeepingTimer invalidate];
-    self.housekeepingTimer = nil;
-
 }
 
 #pragma mark - Channel and channel group management
@@ -976,7 +972,7 @@ static OSStatus topRenderNotifyCallback(void *inRefCon, AudioUnitRenderActionFla
         
         group->channels[group->channelCount++] = channelElement;
     }
-
+    
     int channelCount = [channels count];
     
     // Set bus count
@@ -1113,7 +1109,7 @@ static OSStatus topRenderNotifyCallback(void *inRefCon, AudioUnitRenderActionFla
     group->channel   = channel;
     
     parentGroup->channelCount++;
-
+    
     [self configureChannelsInRange:NSMakeRange(groupIndex, 1) forGroup:parentGroup];
     checkResult([self updateGraph], "Update graph");
     
@@ -1404,7 +1400,7 @@ static void processPendingMessagesOnRealtimeThread(AEAudioController *THIS) {
             }
 #endif
         }
-
+        
         if ( message.responseBlock ) {
             int32_t availableBytes;
             message_t *reply = TPCircularBufferHead(&THIS->_mainThreadMessageBuffer, &availableBytes);
@@ -1445,10 +1441,10 @@ static void processPendingMessagesOnRealtimeThread(AEAudioController *THIS) {
             message->responseBlock();
             [message->responseBlock release];
         } else if ( message->handler ) {
-            message->handler(self, 
+            message->handler(self,
                              message->userInfoLength > 0
-                             ? (message->userInfoByReference ? message->userInfoByReference : message+1) 
-                             : NULL, 
+                             ? (message->userInfoByReference ? message->userInfoByReference : message+1)
+                             : NULL,
                              message->userInfoLength);
         }
         
@@ -1534,8 +1530,8 @@ static void processPendingMessagesOnRealtimeThread(AEAudioController *THIS) {
     }
 }
 
-void AEAudioControllerSendAsynchronousMessageToMainThread(AEAudioController                 *THIS, 
-                                                          AEAudioControllerMainThreadMessageHandler    handler, 
+void AEAudioControllerSendAsynchronousMessageToMainThread(AEAudioController                 *THIS,
+                                                          AEAudioControllerMainThreadMessageHandler    handler,
                                                           void                              *userInfo,
                                                           int                                userInfoLength) {
     
@@ -1667,8 +1663,8 @@ NSTimeInterval AEConvertFramesToSeconds(AEAudioController *THIS, long frames) {
 
 -(UInt32)audioSessionCategory {
     return ( !_audioInputAvailable && (_audioSessionCategory == kAudioSessionCategory_PlayAndRecord || _audioSessionCategory == kAudioSessionCategory_RecordAudio) )
-                ? kAudioSessionCategory_MediaPlayback
-                : _audioSessionCategory;
+    ? kAudioSessionCategory_MediaPlayback
+    : _audioSessionCategory;
 }
 
 -(void)setAllowMixingWithOtherApps:(BOOL)allowMixingWithOtherApps {
@@ -1689,7 +1685,7 @@ NSTimeInterval AEConvertFramesToSeconds(AEAudioController *THIS, long frames) {
 
 -(void)setEnableBluetoothInput:(BOOL)enableBluetoothInput {
     _enableBluetoothInput = enableBluetoothInput;
-
+    
     // Enable/disable bluetooth
     UInt32 allowBluetoothInput = _enableBluetoothInput;
     OSStatus result = AudioSessionSetProperty (kAudioSessionProperty_OverrideCategoryEnableBluetoothInput, sizeof (allowBluetoothInput), &allowBluetoothInput);
@@ -1761,8 +1757,6 @@ NSTimeInterval AEConvertFramesToSeconds(AEAudioController *THIS, long frames) {
 }
 
 -(void)setInputChannelSelection:(NSArray *)inputChannelSelection {
-    if ( (!inputChannelSelection && !_inputCallbacks[0].channelMap) || [inputChannelSelection isEqualToArray:_inputCallbacks[0].channelMap] ) return;
-    
     [inputChannelSelection retain];
     [_inputCallbacks[0].channelMap release];
     _inputCallbacks[0].channelMap = inputChannelSelection;
@@ -1776,7 +1770,7 @@ NSTimeInterval AEConvertFramesToSeconds(AEAudioController *THIS, long frames) {
     if ( _preferredBufferDuration == preferredBufferDuration ) return;
     
     _preferredBufferDuration = preferredBufferDuration;
-
+    
     Float32 preferredBufferSize = [self usingVPIO] ? MAX(kMaxBufferDurationWithVPIO, _preferredBufferDuration) : _preferredBufferDuration;
     OSStatus result = AudioSessionSetProperty(kAudioSessionProperty_PreferredHardwareIOBufferDuration, sizeof(preferredBufferSize), &preferredBufferSize);
     checkResult(result, "AudioSessionSetProperty(kAudioSessionProperty_PreferredHardwareIOBufferDuration)");
@@ -1840,7 +1834,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
     [audiobusInputPort retain];
     [_audiobusInputPort release];
     _audiobusInputPort = audiobusInputPort;
-
+    
     if ( _inputEnabled ) {
         [self updateInputDeviceStatus];
     }
@@ -1923,7 +1917,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
 #pragma mark - Events
 
 -(void) observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
-
+    
     if ( object == _topChannel->audiobusOutputPort ) {
         if ( [change objectForKey:NSKeyValueChangeNotificationIsPriorKey] ) {
             [self willChangeValueForKey:@"audioRoute"];
@@ -1962,7 +1956,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
             OSStatus result = AudioUnitSetParameter(group->mixerAudioUnit, kMultiChannelMixerParam_Pan, kAudioUnitScope_Input, index, value, 0);
             checkResult(result, "AudioUnitSetParameter(kMultiChannelMixerParam_Pan)");
         }
-
+        
     } else if ( [keyPath isEqualToString:@"channelIsPlaying"] ) {
         channelElement->playing = channel.channelIsPlaying;
         AudioUnitParameterValue value = channel.channelIsPlaying && (![channel respondsToSelector:@selector(channelIsMuted)] || !channel.channelIsMuted);
@@ -2075,7 +2069,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
     if ( achievedSampleRate != sampleRate ) {
         NSLog(@"Hardware sample rate is %f", achievedSampleRate);
     }
-
+    
     // Determine audio route
     CFStringRef route;
     size = sizeof(route);
@@ -2132,13 +2126,13 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
     // Get reference to IO audio unit
     result = AUGraphNodeInfo(_audioGraph, _ioNode, NULL, &_ioAudioUnit);
     if ( !checkResult(result, "AUGraphNodeInfo") ) return NO;
-
+    
     [self configureAudioUnit];
     
     if ( _inputEnabled ) {
         [self updateInputDeviceStatus];
     }
-
+    
     if ( !_topGroup ) {
         // Allocate top-level group
         _topChannel = (AEChannelRef)calloc(1, sizeof(channel_t));
@@ -2155,7 +2149,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
         
         UInt32 size = sizeof(_topChannel->audioDescription);
         checkResult(AudioUnitGetProperty(_ioAudioUnit, kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output, 0, &_topChannel->audioDescription, &size),
-                   "AudioUnitGetProperty(kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output)");
+                    "AudioUnitGetProperty(kAudioUnitProperty_StreamFormat, kAudioUnitScope_Output)");
     }
     
     // Initialise group
@@ -2191,9 +2185,9 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
     _running = NO;
     
     if ( !checkResult(AUGraphStop(_audioGraph), "AUGraphStop") // Stop graph
-            || !checkResult(AUGraphRemoveNode(_audioGraph, _ioNode), "AUGraphRemoveNode") // Remove the old IO node
-            || !checkResult(AUGraphAddNode(_audioGraph, &io_desc, &_ioNode), "AUGraphAddNode io") // Create new IO node
-            || !checkResult(AUGraphNodeInfo(_audioGraph, _ioNode, NULL, &_ioAudioUnit), "AUGraphNodeInfo") ) { // Get reference to input audio unit
+        || !checkResult(AUGraphRemoveNode(_audioGraph, _ioNode), "AUGraphRemoveNode") // Remove the old IO node
+        || !checkResult(AUGraphAddNode(_audioGraph, &io_desc, &_ioNode), "AUGraphAddNode io") // Create new IO node
+        || !checkResult(AUGraphNodeInfo(_audioGraph, _ioNode, NULL, &_ioAudioUnit), "AUGraphNodeInfo") ) { // Get reference to input audio unit
         [self attemptRecoveryFromSystemError];
         return;
     }
@@ -2205,7 +2199,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
         [self attemptRecoveryFromSystemError];
         return;
     }
-
+    
     if ( _inputEnabled ) {
         [self updateInputDeviceStatus];
     }
@@ -2302,7 +2296,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
 - (BOOL)mustUpdateVoiceProcessingSettings {
     
     BOOL useVoiceProcessing = [self usingVPIO];
-
+    
     AudioComponentDescription target_io_desc = {
         .componentType = kAudioUnitType_Output,
         .componentSubType = useVoiceProcessing ? kAudioUnitSubType_VoiceProcessingIO : kAudioUnitSubType_RemoteIO,
@@ -2394,7 +2388,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
     int inputCallbackCount = _inputCallbackCount;
     input_callback_table_t *inputCallbacks = (input_callback_table_t*)malloc(sizeof(input_callback_table_t) * inputCallbackCount);
     memcpy(inputCallbacks, _inputCallbacks, sizeof(input_callback_table_t) * inputCallbackCount);
-
+    
     if ( inputAvailable ) {
         rawAudioDescription = _audioDescription;
         AEAudioStreamBasicDescriptionSetChannelsPerFrame(&rawAudioDescription, numberOfInputChannels);
@@ -2426,8 +2420,8 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
             
             // Determine if conversion is required
             BOOL converterRequired = iOS4ConversionRequired
-                                            || entry->audioDescription.mChannelsPerFrame != numberOfInputChannels
-                                            || (entry->channelMap && [entry->channelMap count] != entry->audioDescription.mChannelsPerFrame);
+            || entry->audioDescription.mChannelsPerFrame != numberOfInputChannels
+            || (entry->channelMap && [entry->channelMap count] != entry->audioDescription.mChannelsPerFrame);
             if ( !converterRequired && entry->channelMap ) {
                 for ( int i=0; i<[entry->channelMap count]; i++ ) {
                     if ( [[entry->channelMap objectAtIndex:i] intValue] != i ) {
@@ -2470,14 +2464,14 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
                 for ( int i=0; i<entry->audioDescription.mChannelsPerFrame; i++ ) {
                     if ( [entry->channelMap count] > 0 ) {
                         channelMap[i] = min(numberOfInputChannels-1,
-                                               [entry->channelMap count] > i
-                                               ? [[entry->channelMap objectAtIndex:i] intValue]
-                                               : [[entry->channelMap lastObject] intValue]);
+                                            [entry->channelMap count] > i
+                                            ? [[entry->channelMap objectAtIndex:i] intValue]
+                                            : [[entry->channelMap lastObject] intValue]);
                     } else {
                         channelMap[i] = min(numberOfInputChannels-1, i);
                     }
                 }
-
+                
                 AudioStreamBasicDescription converterInputFormat;
                 AudioStreamBasicDescription converterOutputFormat;
                 UInt32 formatSize = sizeof(converterOutputFormat);
@@ -2501,9 +2495,9 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
                 }
                 
                 if ( !entry->audioConverter
-                        || memcmp(&converterInputFormat, &rawAudioDescription, sizeof(AudioStreamBasicDescription)) != 0
-                        || memcmp(&converterOutputFormat, &entry->audioDescription, sizeof(AudioStreamBasicDescription)) != 0
-                        || (currentMappingSize != channelMapSize || memcmp(currentMapping, channelMap, channelMapSize) != 0) ) {
+                    || memcmp(&converterInputFormat, &rawAudioDescription, sizeof(AudioStreamBasicDescription)) != 0
+                    || memcmp(&converterOutputFormat, &entry->audioDescription, sizeof(AudioStreamBasicDescription)) != 0
+                    || (currentMappingSize != channelMapSize || memcmp(currentMapping, channelMap, channelMapSize) != 0) ) {
                     
                     checkResult(AudioConverterNew(&rawAudioDescription, &entry->audioDescription, &entry->audioConverter), "AudioConverterNew");
                     checkResult(AudioConverterSetProperty(entry->audioConverter, kAudioConverterChannelMap, channelMapSize, channelMap), "AudioConverterSetProperty(kAudioConverterChannelMap");
@@ -2556,7 +2550,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
     int oldInputCallbackCount = _inputCallbackCount;
     audio_level_monitor_t oldInputLevelMonitorData = _inputLevelMonitorData;
     
-    if ( _audiobusInputPort && usingAudiobus ) {
+    if ( _audiobusInputPort ) {
         AudioStreamBasicDescription clientFormat = [_audiobusInputPort clientFormat];
         if ( memcmp(&clientFormat, &rawAudioDescription, sizeof(AudioStreamBasicDescription)) != 0 ) {
             [_audiobusInputPort setClientFormat:rawAudioDescription];
@@ -2587,13 +2581,6 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
         _usingAudiobusInput       = usingAudiobus;
         _inputLevelMonitorData    = inputLevelMonitorData;
     }];
-    
-    if ( _audiobusInputPort && !usingAudiobus ) {
-        AudioStreamBasicDescription clientFormat = [_audiobusInputPort clientFormat];
-        if ( memcmp(&clientFormat, &rawAudioDescription, sizeof(AudioStreamBasicDescription)) != 0 ) {
-            [_audiobusInputPort setClientFormat:rawAudioDescription];
-        }
-    }
     
     if ( oldInputBuffer && oldInputBuffer != inputAudioBufferList ) {
         AEFreeAudioBufferList(oldInputBuffer);
@@ -2679,9 +2666,9 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
             AURenderCallbackStruct rcbs;
             rcbs.inputProc = &renderCallback;
             rcbs.inputProcRefCon = channel;
-                
+            
             if ( 1 /* workaround for graph bug: http://wiki.theamazingaudioengine.com/graph-node-input-callback-bug */
-                    || !hasUpstreamInteraction || upstreamInteraction.nodeInteractionType != kAUNodeInteraction_InputCallback || memcmp(&upstreamInteraction.nodeInteraction.inputCallback.cback, &rcbs, sizeof(rcbs)) != 0 ) {
+                || !hasUpstreamInteraction || upstreamInteraction.nodeInteractionType != kAUNodeInteraction_InputCallback || memcmp(&upstreamInteraction.nodeInteraction.inputCallback.cback, &rcbs, sizeof(rcbs)) != 0 ) {
                 if ( hasUpstreamInteraction ) {
                     checkResult(AUGraphDisconnectNodeInput(_audioGraph, targetNode, targetBus), "AUGraphDisconnectNodeInput");
                 }
@@ -2715,7 +2702,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
                 
                 // Add mixer node to graph
                 if ( !checkResult(AUGraphAddNode(_audioGraph, &mixer_desc, &subgroup->mixerNode), "AUGraphAddNode mixer") ||
-                     !checkResult(AUGraphNodeInfo(_audioGraph, subgroup->mixerNode, NULL, &subgroup->mixerAudioUnit), "AUGraphNodeInfo") ) {
+                    !checkResult(AUGraphNodeInfo(_audioGraph, subgroup->mixerNode, NULL, &subgroup->mixerAudioUnit), "AUGraphNodeInfo") ) {
                     continue;
                 }
                 
@@ -2727,7 +2714,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
             // Set bus count
             UInt32 busCount = subgroup->channelCount;
             if ( !checkResult(AudioUnitSetProperty(subgroup->mixerAudioUnit, kAudioUnitProperty_ElementCount, kAudioUnitScope_Input, 0, &busCount, sizeof(busCount)), "AudioUnitSetProperty(kAudioUnitProperty_ElementCount)") ) continue;
-
+            
             // Get current mixer's output format
             AudioStreamBasicDescription currentMixerOutputDescription;
             UInt32 size = sizeof(currentMixerOutputDescription);
@@ -2759,7 +2746,7 @@ NSTimeInterval AEAudioControllerOutputLatency(AEAudioController *controller) {
                     } else {
                         AudioComponentDescription audioConverterDescription = AEAudioComponentDescriptionMake(kAudioUnitManufacturer_Apple, kAudioUnitType_FormatConverter, kAudioUnitSubType_AUConverter);
                         if ( !checkResult(AUGraphAddNode(_audioGraph, &audioConverterDescription, &subgroup->converterNode), "AUGraphAddNode") ||
-                             !checkResult(AUGraphNodeInfo(_audioGraph, subgroup->converterNode, NULL, &subgroup->converterUnit), "AUGraphNodeInfo") ) {
+                            !checkResult(AUGraphNodeInfo(_audioGraph, subgroup->converterNode, NULL, &subgroup->converterUnit), "AUGraphNodeInfo") ) {
                             AUGraphRemoveNode(_audioGraph, subgroup->converterNode);
                             subgroup->converterNode = 0;
                             subgroup->converterUnit = NULL;
@@ -2904,7 +2891,7 @@ static void removeChannelsFromGroup(AEAudioController *THIS, AEChannelGroupRef g
         for ( index=0; index < group->channelCount; index++ ) {
             if ( group->channels[index] && group->channels[index]->ptr == ptrs[i] && group->channels[index]->object == objects[i] ) {
                 group->channelCount--;
-
+                
                 if ( outChannelReferences && outChannelReferencesCount < count ) outChannelReferences[outChannelReferencesCount++] = group->channels[index];
                 
                 // Shuffle the later elements backwards one space
@@ -2924,7 +2911,7 @@ static void removeChannelsFromGroup(AEAudioController *THIS, AEChannelGroupRef g
                 rcbs.inputProcRefCon = NULL;
                 checkResult(AudioUnitSetProperty(group->mixerAudioUnit, kAudioUnitProperty_SetRenderCallback, kAudioUnitScope_Input, group->channelCount, &rcbs, sizeof(AURenderCallbackStruct)),
                             "AudioUnitSetProperty(kAudioUnitProperty_SetRenderCallback)") ;
-
+                
             }
         }
     }
@@ -3137,7 +3124,7 @@ static void removeCallbackFromTable(AEAudioController *THIS, callback_table_t *t
     [self performSynchronousMessageExchangeWithBlock:^{
         addCallbackToTable(self, &group->channel->callbacks, callback, userInfo, flags);
     }];
-
+    
     AEChannelGroupRef parentGroup = NULL;
     int index=0;
     if ( group != _topGroup ) {
@@ -3284,7 +3271,7 @@ static void performLevelMonitoring(audio_level_monitor_t* monitor, AudioBufferLi
     
     UInt32 monitorFrames = min(numberFrames, kLevelMonitorScratchBufferSize);
     AEFloatConverterToFloatBufferList(monitor->floatConverter, buffer, monitor->scratchBuffer, monitorFrames);
-
+    
     for ( int i=0; i<monitor->scratchBuffer->mNumberBuffers; i++ ) {
         float peak = 0.0;
         vDSP_maxmgv((float*)monitor->scratchBuffer->mBuffers[i].mData, 1, &peak, monitorFrames);
@@ -3310,8 +3297,7 @@ static void serveAudiobusInputQueue(AEAudioController *THIS) {
         timestamp.mSampleTime = __sampleTime;
         __sampleTime += frames;
         
-        OSStatus result = inputAvailableCallback(THIS, &flags, &timestamp, 0, frames, NULL);
-        if ( result == kNoAudioErr ) break;
+        inputAvailableCallback(THIS, &flags, &timestamp, 0, frames, NULL);
     }
 }
 
@@ -3320,6 +3306,34 @@ static void serveAudiobusInputQueue(AEAudioController *THIS) {
     UInt32 bufferDurationSize = sizeof(bufferDuration);
     OSStatus result = AudioSessionGetProperty(kAudioSessionProperty_CurrentHardwareIOBufferDuration, &bufferDurationSize, &bufferDuration);
     if ( result == noErr && _currentBufferDuration != bufferDuration ) self.currentBufferDuration = bufferDuration;
+}
+
+void AEChannelSetPlayingAtIndex(AEAudioController *THIS,int index,BOOL playing){
+    AudioUnitParameterValue value = playing;
+    AEChannelGroupRef group = THIS->_topGroup;
+    group->channels[index]->playing = value;
+    if ( group->mixerAudioUnit ) {
+        OSStatus result = AudioUnitSetParameter(group->mixerAudioUnit, kMultiChannelMixerParam_Enable, kAudioUnitScope_Input, index, value, 0);
+        checkResult(result, "AudioUnitSetParameter(kMultiChannelMixerParam_Enable)");
+    }
+}
+
+void AEChannelSetAllPlaying(AEAudioController *THIS,BOOL playing){
+    AudioUnitParameterValue value = playing;
+    AEChannelGroupRef group = THIS->_topGroup;
+    for (int i=0;i<group->channelCount;i++){
+        if (group->channels[i]){
+            group->channels[i]->playing = value;
+        }
+    }
+    if ( group->mixerAudioUnit ) {
+        for (int i=0;i<group->channelCount;i++){
+            if (group->channels[i]){
+                OSStatus result = AudioUnitSetParameter(group->mixerAudioUnit, kMultiChannelMixerParam_Enable, kAudioUnitScope_Input, i, value, 0);
+                checkResult(result, "AudioUnitSetParameter(kMultiChannelMixerParam_Enable)");
+            }
+        }
+    }
 }
 
 @end

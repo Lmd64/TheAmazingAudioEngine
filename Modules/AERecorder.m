@@ -26,6 +26,7 @@
 #import "AERecorder.h"
 #import "AEMixerBuffer.h"
 #import "AEAudioFileWriter.h"
+#import <mach/mach_time.h>
 
 #define kProcessChunkSize 8192
 
@@ -33,7 +34,6 @@ NSString * AERecorderDidEncounterErrorNotification = @"AERecorderDidEncounterErr
 NSString * kAERecorderErrorKey = @"error";
 
 @interface AERecorder () {
-    BOOL _recording;
     AudioBufferList *_buffer;
 }
 @property (nonatomic, retain) AEMixerBuffer *mixer;
@@ -76,6 +76,7 @@ NSString * kAERecorderErrorKey = @"error";
 - (void)finishRecording {
     _recording = NO;
     [_writer finishWriting];
+    Log(@"AERecorder start            = %d",getUptimeInMilliseconds(_start));
 }
 
 -(NSString *)path {
@@ -115,6 +116,11 @@ static void audioCallback(id                        receiver,
     AEMixerBufferDequeue(THIS->_mixer, THIS->_buffer, &bufferLength, NULL);
     
     if ( bufferLength > 0 ) {
+        if (!THIS->didStoreRecordingTime){
+            THIS->didStoreRecordingTime = YES;
+            THIS->_start = mach_absolute_time();
+        }
+
         OSStatus status = AEAudioFileWriterAddAudio(THIS->_writer, THIS->_buffer, bufferLength);
         if ( status != noErr ) {
             AEAudioControllerSendAsynchronousMessageToMainThread(audioController, 

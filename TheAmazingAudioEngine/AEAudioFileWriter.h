@@ -104,4 +104,9 @@ OSStatus AEAudioFileWriterAddAudioSynchronously(AEAudioFileWriter* writer, Audio
  */
 @property (nonatomic, retain, readonly) NSString *path;
 
+
+
+/* ##### Lmd64 Additions ##### */
+- (BOOL)createFileAtPath:(NSString*)path fileType:(AudioFileTypeID)fileType error:(NSError**)error;
+
 @end

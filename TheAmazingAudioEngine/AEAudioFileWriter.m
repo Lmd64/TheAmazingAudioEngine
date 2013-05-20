@@ -31,7 +31,7 @@ NSString * AEAudioFileWriterErrorDomain = @"com.theamazingaudioengine.AEAudioFil
 #define checkResult(result,operation) (_checkResult((result),(operation),strrchr(__FILE__, '/')+1,__LINE__))
 static inline BOOL _checkResult(OSStatus result, const char *operation, const char* file, int line) {
     if ( result != noErr ) {
-        NSLog(@"%s:%d: %s result %d %08X %4.4s\n", file, line, operation, (int)result, (int)result, (char*)&result); 
+        NSLog(@"%s:%d: %s result %d %08X %4.4s\n", file, line, operation, (int)result, (int)result, (char*)&result);
         return NO;
     }
     return YES;
@@ -59,7 +59,7 @@ static inline BOOL _checkResult(OSStatus result, const char *operation, const ch
     
     if ( available_set ) return available;
     
-    // get an array of AudioClassDescriptions for all installed encoders for the given format 
+    // get an array of AudioClassDescriptions for all installed encoders for the given format
     // the specifier is the format that we are interested in - this is 'aac ' in our case
     UInt32 encoderSpecifier = kAudioFormatMPEG4AAC;
     UInt32 size;
@@ -110,8 +110,8 @@ static inline BOOL _checkResult(OSStatus result, const char *operation, const ch
     
     if ( fileType == kAudioFileM4AType ) {
         if ( ![AEAudioFileWriter AACEncodingAvailable] ) {
-            if ( error ) *error = [NSError errorWithDomain:AEAudioFileWriterErrorDomain 
-                                                      code:kAEAudioFileWriterFormatError 
+            if ( error ) *error = [NSError errorWithDomain:AEAudioFileWriterErrorDomain
+                                                      code:kAEAudioFileWriterFormatError
                                                   userInfo:[NSDictionary dictionaryWithObject:NSLocalizedString(@"AAC Encoding not available", @"")
                                                                                        forKey:NSLocalizedDescriptionKey]];
             
@@ -120,7 +120,7 @@ static inline BOOL _checkResult(OSStatus result, const char *operation, const ch
         
         // AAC won't work if the 'mix with others' session property is enabled. Disable it if it's on.
         UInt32 size = sizeof(_priorMixOverrideValue);
-        checkResult(AudioSessionGetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers, &size, &_priorMixOverrideValue), 
+        checkResult(AudioSessionGetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers, &size, &_priorMixOverrideValue),
                     "AudioSessionGetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers)");
         
         if ( _priorMixOverrideValue != NO ) {
@@ -128,7 +128,7 @@ static inline BOOL _checkResult(OSStatus result, const char *operation, const ch
             checkResult(AudioSessionSetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers, sizeof (allowMixing), &allowMixing),
                         "AudioSessionSetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers)");
         }
-
+        
         // Get the output audio description
         AudioStreamBasicDescription destinationFormat;
         memset(&destinationFormat, 0, sizeof(destinationFormat));
@@ -139,26 +139,26 @@ static inline BOOL _checkResult(OSStatus result, const char *operation, const ch
         status = AudioFormatGetProperty(kAudioFormatProperty_FormatInfo, 0, NULL, &size, &destinationFormat);
         if ( !checkResult(status, "AudioFormatGetProperty(kAudioFormatProperty_FormatInfo") ) {
             int fourCC = CFSwapInt32HostToBig(status);
-            if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain 
-                                                      code:status 
-                                                  userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't prepare the output format (error %d/%4.4s)", @""), status, (char*)&fourCC] 
+            if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                      code:status
+                                                  userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't prepare the output format (error %d/%4.4s)", @""), status, (char*)&fourCC]
                                                                                        forKey:NSLocalizedDescriptionKey]];
             return NO;
         }
         
         // Create the file
-        status = ExtAudioFileCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path], 
-                                           kAudioFileM4AType, 
-                                           &destinationFormat, 
-                                           NULL, 
-                                           kAudioFileFlags_EraseFile, 
+        status = ExtAudioFileCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path],
+                                           kAudioFileM4AType,
+                                           &destinationFormat,
+                                           NULL,
+                                           kAudioFileFlags_EraseFile,
                                            &_audioFile);
         
         if ( !checkResult(status, "ExtAudioFileCreateWithURL") ) {
             int fourCC = CFSwapInt32HostToBig(status);
-            if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain 
-                                                      code:status 
-                                                  userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't open the output file (error %d/%4.4s)", @""), status, (char*)&fourCC] 
+            if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                      code:status
+                                                  userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't open the output file (error %d/%4.4s)", @""), status, (char*)&fourCC]
                                                                                        forKey:NSLocalizedDescriptionKey]];
             return NO;
         }
@@ -170,22 +170,22 @@ static inline BOOL _checkResult(OSStatus result, const char *operation, const ch
         audioDescription.mFormatFlags = (fileType == kAudioFileAIFFType ? kLinearPCMFormatFlagIsBigEndian : 0) | kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked;
         audioDescription.mFormatID = kAudioFormatLinearPCM;
         audioDescription.mBytesPerPacket =
-            audioDescription.mBytesPerFrame = audioDescription.mChannelsPerFrame * (audioDescription.mBitsPerChannel/8);
+        audioDescription.mBytesPerFrame = audioDescription.mChannelsPerFrame * (audioDescription.mBitsPerChannel/8);
         audioDescription.mFramesPerPacket = 1;
         
         // Create the file
-        status = ExtAudioFileCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path], 
-                                           fileType, 
-                                           &audioDescription, 
-                                           NULL, 
-                                           kAudioFileFlags_EraseFile, 
+        status = ExtAudioFileCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path],
+                                           fileType,
+                                           &audioDescription,
+                                           NULL,
+                                           kAudioFileFlags_EraseFile,
                                            &_audioFile);
         
         if ( !checkResult(status, "ExtAudioFileCreateWithURL") ) {
             int fourCC = CFSwapInt32HostToBig(status);
-            if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain 
-                                                      code:status 
-                                                  userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't open the output file (error %d/%4.4s)", @""), status, (char*)&fourCC] 
+            if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                      code:status
+                                                  userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't open the output file (error %d/%4.4s)", @""), status, (char*)&fourCC]
                                                                                        forKey:NSLocalizedDescriptionKey]];
             return NO;
         }
@@ -195,26 +195,26 @@ static inline BOOL _checkResult(OSStatus result, const char *operation, const ch
     status = ExtAudioFileSetProperty(_audioFile, kExtAudioFileProperty_ClientDataFormat, sizeof(AudioStreamBasicDescription), &_audioDescription);
     if ( !checkResult(status, "ExtAudioFileSetProperty(kExtAudioFileProperty_ClientDataFormat") ) {
         int fourCC = CFSwapInt32HostToBig(status);
-        if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain 
-                                                  code:status 
-                                              userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't configure the converter (error %d/%4.4s)", @""), status, (char*)&fourCC] 
+        if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                  code:status
+                                              userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't configure the converter (error %d/%4.4s)", @""), status, (char*)&fourCC]
                                                                                    forKey:NSLocalizedDescriptionKey]];
         ExtAudioFileDispose(_audioFile);
         return NO;
     }
     
-    // Init the async file writing mechanism
-    checkResult(ExtAudioFileWriteAsync(_audioFile, 0, NULL), "ExtAudioFileWriteAsync");
-    
     self.path = path;
     _writing = YES;
+    
+    // Init the async file writing mechanism
+    checkResult(ExtAudioFileWriteAsync(_audioFile, 0, NULL), "ExtAudioFileWriteAsync");
     
     return YES;
 }
 
 - (void)finishWriting {
     if ( !_writing ) return;
-
+    
     _writing = NO;
     
     checkResult(ExtAudioFileDispose(_audioFile), "AudioFileClose");
@@ -232,5 +232,114 @@ OSStatus AEAudioFileWriterAddAudio(AEAudioFileWriter* THIS, AudioBufferList *buf
 OSStatus AEAudioFileWriterAddAudioSynchronously(AEAudioFileWriter* THIS, AudioBufferList *bufferList, UInt32 lengthInFrames) {
     return ExtAudioFileWrite(THIS->_audioFile, lengthInFrames, bufferList);
 }
+
+/* ##### Lmd64 Additions ##### */
+- (BOOL)createFileAtPath:(NSString*)path fileType:(AudioFileTypeID)fileType error:(NSError**)error {
+    OSStatus status;
+    
+    if ( fileType == kAudioFileM4AType ) {
+        if ( ![AEAudioFileWriter AACEncodingAvailable] ) {
+            if ( error ) *error = [NSError errorWithDomain:AEAudioFileWriterErrorDomain
+                                                      code:kAEAudioFileWriterFormatError
+                                                  userInfo:[NSDictionary dictionaryWithObject:NSLocalizedString(@"AAC Encoding not available", @"")
+                                                                                       forKey:NSLocalizedDescriptionKey]];
+            
+            return NO;
+        }
+        
+        // AAC won't work if the 'mix with others' session property is enabled. Disable it if it's on.
+        UInt32 size = sizeof(_priorMixOverrideValue);
+        checkResult(AudioSessionGetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers, &size, &_priorMixOverrideValue),
+                    "AudioSessionGetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers)");
+        
+        if ( _priorMixOverrideValue != NO ) {
+            UInt32 allowMixing = NO;
+            checkResult(AudioSessionSetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers, sizeof (allowMixing), &allowMixing),
+                        "AudioSessionSetProperty(kAudioSessionProperty_OverrideCategoryMixWithOthers)");
+        }
+        
+        // Get the output audio description
+        AudioStreamBasicDescription destinationFormat;
+        memset(&destinationFormat, 0, sizeof(destinationFormat));
+        destinationFormat.mChannelsPerFrame = _audioDescription.mChannelsPerFrame;
+        destinationFormat.mSampleRate = _audioDescription.mSampleRate;
+        destinationFormat.mFormatID = kAudioFormatMPEG4AAC;
+        size = sizeof(destinationFormat);
+        status = AudioFormatGetProperty(kAudioFormatProperty_FormatInfo, 0, NULL, &size, &destinationFormat);
+        if ( !checkResult(status, "AudioFormatGetProperty(kAudioFormatProperty_FormatInfo") ) {
+            int fourCC = CFSwapInt32HostToBig(status);
+            if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                      code:status
+                                                  userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't prepare the output format (error %d/%4.4s)", @""), status, (char*)&fourCC]
+                                                                                       forKey:NSLocalizedDescriptionKey]];
+            return NO;
+        }
+        
+        // Create the file
+        status = ExtAudioFileCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path],
+                                           kAudioFileM4AType,
+                                           &destinationFormat,
+                                           NULL,
+                                           kAudioFileFlags_EraseFile,
+                                           &_audioFile);
+        
+        if ( !checkResult(status, "ExtAudioFileCreateWithURL") ) {
+            int fourCC = CFSwapInt32HostToBig(status);
+            if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                      code:status
+                                                  userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't open the output file (error %d/%4.4s)", @""), status, (char*)&fourCC]
+                                                                                       forKey:NSLocalizedDescriptionKey]];
+            return NO;
+        }
+        
+    } else {
+        
+        // Derive the output audio description from the client format, but with interleaved, big endian (if AIFF) signed integers.
+        AudioStreamBasicDescription audioDescription = _audioDescription;
+        audioDescription.mFormatFlags = (fileType == kAudioFileAIFFType ? kLinearPCMFormatFlagIsBigEndian : 0) | kLinearPCMFormatFlagIsSignedInteger | kLinearPCMFormatFlagIsPacked;
+        audioDescription.mFormatID = kAudioFormatLinearPCM;
+        audioDescription.mBytesPerPacket =
+        audioDescription.mBytesPerFrame = audioDescription.mChannelsPerFrame * (audioDescription.mBitsPerChannel/8);
+        audioDescription.mFramesPerPacket = 1;
+        
+        // Create the file
+        status = ExtAudioFileCreateWithURL((CFURLRef)[NSURL fileURLWithPath:path],
+                                           fileType,
+                                           &audioDescription,
+                                           NULL,
+                                           kAudioFileFlags_EraseFile,
+                                           &_audioFile);
+        
+        if ( !checkResult(status, "ExtAudioFileCreateWithURL") ) {
+            int fourCC = CFSwapInt32HostToBig(status);
+            if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                      code:status
+                                                  userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't open the output file (error %d/%4.4s)", @""), status, (char*)&fourCC]
+                                                                                       forKey:NSLocalizedDescriptionKey]];
+            return NO;
+        }
+    }
+    
+    // Set up the converter
+    status = ExtAudioFileSetProperty(_audioFile, kExtAudioFileProperty_ClientDataFormat, sizeof(AudioStreamBasicDescription), &_audioDescription);
+    if ( !checkResult(status, "ExtAudioFileSetProperty(kExtAudioFileProperty_ClientDataFormat") ) {
+        int fourCC = CFSwapInt32HostToBig(status);
+        if ( error ) *error = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                  code:status
+                                              userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithFormat:NSLocalizedString(@"Couldn't configure the converter (error %d/%4.4s)", @""), status, (char*)&fourCC]
+                                                                                   forKey:NSLocalizedDescriptionKey]];
+        ExtAudioFileDispose(_audioFile);
+        return NO;
+    }
+    
+    self.path = path;
+    _writing = YES;
+    
+    // Init the async file writing mechanism
+    checkResult(ExtAudioFileWriteAsync(_audioFile, 0, NULL), "ExtAudioFileWriteAsync()");
+    
+    return YES;
+}
+
 
 @end

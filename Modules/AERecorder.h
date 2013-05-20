@@ -42,7 +42,14 @@ extern NSString * kAERecorderErrorKey;
  *
  *  See the sample app for a demonstration.
  */
-@interface AERecorder : NSObject <AEAudioReceiver>
+@interface AERecorder : NSObject <AEAudioReceiver> {
+    @public
+    BOOL _recording;
+    BOOL didStoreRecordingTime;
+}
+
+@property (nonatomic,assign) uint64_t start;
+
 
 /*!
  * Determine whether AAC encoding is possible on this device
